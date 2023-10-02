@@ -15,6 +15,7 @@ import {
   hasOwnProperty,
   statOrUndefined,
 } from './util';
+import { shouldAppendIndexJsExtension } from './appendIndexJsExtension';
 
 /**
  * Node's resolution algorithm for "import" statements is
@@ -313,7 +314,7 @@ export const appendJsExtension = async (
       if (nodePath.node.trailingComments) {
         const { node: { trailingComments } } = nodePath;
         for (const comment of trailingComments) {
-          if (comment.loc.start.line === comment.loc.end.line) {
+          if (comment.loc && comment.loc.start.line === comment.loc.end.line) {
             const [, maybeSourceMappingURL] = comment.value.split(
               'sourceMappingURL=',
             );
@@ -372,12 +373,17 @@ export const appendJsExtension = async (
       quoteCharacter,
       specifier,
     }) => {
-      const shouldAppendExt = await shouldAppendJsExtension(
+      const shouldAppendJsExt = await shouldAppendJsExtension(
         metaData.pathname,
         specifier,
       );
-
-      if (shouldAppendExt) {
+  
+      const shouldAppendIndexJsExt = await shouldAppendIndexJsExtension(
+        metaData.pathname,
+        specifier,
+      );
+  
+      if (shouldAppendJsExt && !shouldAppendIndexJsExt) {
         transformations.push({
           start,
           end,
@@ -392,9 +398,25 @@ export const appendJsExtension = async (
             type: 'js-import-extension',
           },
         });
+      } else if (shouldAppendIndexJsExt) {
+        transformations.push({
+          start,
+          end,
+          originalValue,
+          newValue: [
+            quoteCharacter,
+            specifier,
+            '/index.js',
+            quoteCharacter,
+          ].join(''),
+          metaData: {
+            type: 'index-js-import-extension',
+          },
+        });
       }
     }),
   );
+  
 
   return [transformations, fileMetaData];
 };

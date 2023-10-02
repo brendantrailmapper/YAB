@@ -1,6 +1,7 @@
 import path from 'path';
 
 import { shouldAppendJsExtension } from '../src/lib/appendJsExtension';
+import { shouldAppendIndexJsExtension } from '../src/lib/appendIndexJsExtension';
 
 type Scenario = {
   // the file that is using the import statement
@@ -10,39 +11,45 @@ type Scenario = {
   specifier: string
 
   // expected result
-  append: boolean
+  appendJs: boolean
+  appendIndexJs: boolean
 }
 
 const makeScenario = (
   file: string,
   specifier: string,
-  append: boolean,
+  appendJs: boolean,
+  appendIndexJs: boolean,
 ): Scenario => ({
   file,
   specifier,
-  append,
+  appendJs,
+  appendIndexJs
 });
 
 const testData: Scenario[] = [
-  makeScenario('importingFile.js', 'fs/promises', false),
-  makeScenario('importingFile.js', 'colors/safe', true),
-  makeScenario('importingFile.js', './mod', true),
-  makeScenario('importingFile.js', './mod.js', false),
-  makeScenario('importingFile.js', 'modNoPackageJSON', false),
-  makeScenario('importingFile.js', 'modNoPackageJSON/fp', true),
-  makeScenario('importingFile.js', 'modWithPackageJSONAndMatchingExports/fp', false),
-  makeScenario('importingFile.js', 'modWithPackageJSONButNoExportsAtAll/fp', true),
-  makeScenario('importingFile.js', 'modNoPackageJSON', false),
-  makeScenario('./lib/util/leftPad.js', 'modNoPackageJSON', false),
-  makeScenario('./lib/util/leftPad.js', 'modNoPackageJSON/fp', true),
-  makeScenario('./lib/util/leftPad.js', 'modWithPackageJSONAndMatchingExports/fp', false),
-  makeScenario('./lib/util/leftPad.js', 'modWithPackageJSONButNoExportsAtAll/fp', true),
-  makeScenario('./lib/util/leftPad.js', 'modWithPackageJSONAndMatchingExports/fp', false),
-  makeScenario('./lib/util/leftPad.js', 'modWithPackageJSONButNoExportsAtAll/fp', true),
-  makeScenario('./lib/util/leftPad.js', '../../mod.js', false),
-  makeScenario('./lib/util/leftPad.js', '../../mod.js', false),
-  makeScenario('./lib/util/leftPad.js', 'modWithPackageJSONAndMatchingExports/fp', false),
-  makeScenario('./lib/util/leftPad.js', 'modWithPackageJSONButNoExportsAtAll/fp', true),
+  makeScenario('importingFile.js', 'fs/promises', false, false),
+  makeScenario('importingFile.js', 'colors/safe', true, false),
+  makeScenario('importingFile.js', './mod', true, false),
+  makeScenario('importingFile.js', './mod.js', false, false),
+  makeScenario('importingFile.js', 'modNoPackageJSON', false, false),
+  makeScenario('importingFile.js', 'modNoPackageJSON/fp', true, false),
+  makeScenario('importingFile.js', 'modWithPackageJSONAndMatchingExports/fp', false, false),
+  makeScenario('importingFile.js', 'modWithPackageJSONButNoExportsAtAll/fp', true, false),
+  makeScenario('importingFile.js', 'modNoPackageJSON', false, false),
+  makeScenario('./lib/util/leftPad.js', 'modNoPackageJSON', false, false),
+  makeScenario('./lib/util/leftPad.js', 'modNoPackageJSON/fp', true, false),
+  makeScenario('./lib/util/leftPad.js', 'modWithPackageJSONAndMatchingExports/fp', false, false),
+  makeScenario('./lib/util/leftPad.js', 'modWithPackageJSONButNoExportsAtAll/fp', true, false),
+  makeScenario('./lib/util/leftPad.js', 'modWithPackageJSONAndMatchingExports/fp', false, false),
+  makeScenario('./lib/util/leftPad.js', 'modWithPackageJSONButNoExportsAtAll/fp', true, false),
+  makeScenario('./lib/util/leftPad.js', '../../mod.js', false, false),
+  makeScenario('./lib/util/leftPad.js', '../../mod.js', false, false),
+  makeScenario('./lib/util/leftPad.js', 'modWithPackageJSONAndMatchingExports/fp', false, false),
+  makeScenario('./lib/util/leftPad.js', 'modWithPackageJSONButNoExportsAtAll/fp', true, false),
+
+
+  makeScenario('./lib/util', 'modWithPackageJSONButNoExportsAtAll/fp', false, false),
 ];
 
 describe([
@@ -51,17 +58,22 @@ describe([
 ].join(' '), () => {
   test.each(testData)(
     "add '.js' to «import foo from '$specifier';» in file '$file'? $append",
-    async ({ file, specifier, append }) => {
+    async ({ file, specifier, appendJs, appendIndexJs }) => {
       const importingFilePath = path.resolve(
         'tests', 'fixtures', file,
       );
 
-      const actual = await shouldAppendJsExtension(
+      const actualAppendJs = await shouldAppendJsExtension(
         importingFilePath,
         specifier,
       );
+      const actualAppendIndexJs = await shouldAppendIndexJsExtension(
+        importingFilePath,
+        specifier
+      )
 
-      expect(actual).toBe(append);
+      expect(actualAppendJs).toBe(appendJs);
+      expect(actualAppendIndexJs).toBe(appendIndexJs);
     },
   );
 });
